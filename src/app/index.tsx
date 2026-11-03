@@ -1,98 +1,225 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { cineApi } from '@/services/api';
+import { Pelicula } from '@/types/cine';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+const COLORS = {
+  primary: '#E50914', // rojo Netflix/cine
+  dark: '#141414',
+  card: '#1f1f1f',
+  text: '#ffffff',
+  textSecondary: '#b3b3b3',
+  accent: '#ffd700', // dorado
+  border: '#333333',
+};
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const [peliculas, setPeliculas] = useState<Pelicula[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let montado = true;
+    cineApi
+      .getPeliculas()
+      .then((data) => {
+        if (montado) {
+          setPeliculas(data);
+          setCargando(false);
+        }
+      })
+      .catch((err) => {
+        if (montado) {
+          setError(err.message);
+          setCargando(false);
+        }
+      });
+    return () => {
+      montado = false;
+    };
+  }, []);
+
+  if (cargando) {
+    return (
+      <GestureHandlerRootView style={styles.root}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      </GestureHandlerRootView>
+    );
+  }
+
+  if (error) {
+    return (
+      <GestureHandlerRootView style={styles.root}>
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>No se pudo conectar</Text>
+          <Text style={styles.errorSub}>{error}</Text>
+          <Pressable style={styles.retry} onPress={() => window.location.reload?.()}>
+            <Text style={styles.retryText}>Reintentar</Text>
+          </Pressable>
+        </View>
+      </GestureHandlerRootView>
+    );
+  }
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+    <GestureHandlerRootView style={styles.root}>
+      <FlatList
+        data={peliculas}
+        keyExtractor={(item) => String(item.identificador)}
+        renderItem={({ item }) => (
+          <Pressable
+            style={styles.card}
+            onPress={() =>
+              router.push(`/peliculas/${String(item.identificador)}` as any)
+            }
+          >
+            <View style={styles.poster}>
+              <Text style={styles.posterEmoji}>🎬</Text>
+            </View>
+            <View style={styles.cardContent}>
+              <Text style={styles.titulo}>{item.titulo}</Text>
+              <View style={styles.metaRow}>
+                <Text style={styles.metaText}>{item.director?.director}</Text>
+                <Text style={styles.metaDivider}>•</Text>
+                <Text style={styles.metaText}>{item.categoria?.categoria}</Text>
+                <Text style={styles.metaDivider}>•</Text>
+                <Text style={styles.metaText}>{item.duracion} min</Text>
+              </View>
+            </View>
+          </Pressable>
+        )}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>🎬 Sala de Cines</Text>
+            <Text style={styles.headerSub}>
+              {peliculas.length} películas disponibles
+            </Text>
+          </View>
+        }
+        contentContainerStyle={styles.listContent}
+        style={styles.container}
+      />
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   container: {
     flex: 1,
+    backgroundColor: COLORS.dark,
+  },
+  content: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 24,
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: COLORS.text,
+    letterSpacing: -0.5,
+  },
+  headerSub: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginTop: 4,
+  },
+  listContent: {
+    paddingBottom: 24,
+    gap: 14,
+  },
+  card: {
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  poster: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#2a2a2a',
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  posterEmoji: {
+    fontSize: 64,
+  },
+  cardContent: {
+    padding: 14,
+  },
+  titulo: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.text,
+    marginBottom: 8,
+  },
+  metaRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    alignItems: 'center',
   },
-  safeArea: {
+  metaText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+  },
+  metaDivider: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginHorizontal: 2,
+  },
+  centered: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    alignItems: 'center',
+    gap: 12,
   },
-  title: {
+  errorText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  errorSub: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
     textAlign: 'center',
+    paddingHorizontal: 32,
+    marginTop: 8,
   },
-  code: {
-    textTransform: 'uppercase',
+  retry: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  retryText: {
+    color: '#ffffff',
+    fontWeight: '600',
   },
 });
