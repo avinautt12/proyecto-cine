@@ -1,6 +1,6 @@
 import { Categoria, Director, Pelicula } from '@/types/cine';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = 'http://localhost:3000/api';
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {

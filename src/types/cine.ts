@@ -19,4 +19,6 @@ export interface Pelicula {
   idCategoria: number;
   categoria: Categoria;
   sinopsis: string | null;
+  imagen?: string; 
+  Imagen?: string;
 }

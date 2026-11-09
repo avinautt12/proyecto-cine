@@ -5,7 +5,9 @@ import {
   StyleSheet,
   Text,
   View,
+  Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
@@ -14,12 +16,11 @@ import { cineApi } from '@/services/api';
 import { Pelicula } from '@/types/cine';
 
 const COLORS = {
-  primary: '#E50914', // rojo Netflix/cine
-  dark: '#141414',
-  card: '#1f1f1f',
+  primary: '#D81A21', 
+  dark: '#000000',   
+  card: '#1A1A1A',    
   text: '#ffffff',
-  textSecondary: '#b3b3b3',
-  accent: '#ffd700', // dorado
+  textSecondary: '#A0A0A0',
   border: '#333333',
 };
 
@@ -52,146 +53,152 @@ export default function HomeScreen() {
 
   if (cargando) {
     return (
-      <GestureHandlerRootView style={styles.root}>
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      </GestureHandlerRootView>
+      <SafeAreaView style={styles.root}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+        </GestureHandlerRootView>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <GestureHandlerRootView style={styles.root}>
-        <View style={styles.centered}>
-          <Text style={styles.errorText}>No se pudo conectar</Text>
-          <Text style={styles.errorSub}>{error}</Text>
-          <Pressable style={styles.retry} onPress={() => window.location.reload?.()}>
-            <Text style={styles.retryText}>Reintentar</Text>
-          </Pressable>
-        </View>
-      </GestureHandlerRootView>
+      <SafeAreaView style={styles.root}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View style={styles.centered}>
+            <Text style={styles.errorText}>No se pudo conectar</Text>
+            <Text style={styles.errorSub}>{error}</Text>
+            <Pressable style={styles.retry} onPress={() => window.location.reload?.()}>
+              <Text style={styles.retryText}>Reintentar</Text>
+            </Pressable>
+          </View>
+        </GestureHandlerRootView>
+      </SafeAreaView>
     );
   }
 
   return (
-    <GestureHandlerRootView style={styles.root}>
-      <FlatList
-        data={peliculas}
-        keyExtractor={(item) => String(item.identificador)}
-        renderItem={({ item }) => (
-          <Pressable
-            style={styles.card}
-            onPress={() =>
-              router.push(`/peliculas/${String(item.identificador)}` as any)
-            }
-          >
-            <View style={styles.poster}>
-              <Text style={styles.posterEmoji}>🎬</Text>
-            </View>
-            <View style={styles.cardContent}>
-              <Text style={styles.titulo}>{item.titulo}</Text>
-              <View style={styles.metaRow}>
-                <Text style={styles.metaText}>{item.director?.director}</Text>
-                <Text style={styles.metaDivider}>•</Text>
-                <Text style={styles.metaText}>{item.categoria?.categoria}</Text>
-                <Text style={styles.metaDivider}>•</Text>
-                <Text style={styles.metaText}>{item.duracion} min</Text>
+    <SafeAreaView style={styles.root} edges={['top']}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <FlatList
+          data={peliculas}
+          keyExtractor={(item, index) =>
+            (item.identificador ?? (item as any).Identificador ?? index).toString()
+          }
+          renderItem={({ item }) => (
+            <Pressable
+              style={styles.card}
+              onPress={() =>
+                router.push(`/peliculas/${String((item as any).Identificador ?? item.identificador)}` as any)
+              }
+            >
+              <Image
+                source={{ uri: (item as any).Imagen ?? item.imagen ?? 'https://via.placeholder.com/500x750?text=Sin+Poster' }}
+                style={styles.posterImage}
+                resizeMode="cover"
+              />
+              <View style={styles.cardContent}>
+                <Text style={styles.titulo}>{(item as any).Titulo ?? item.titulo}</Text>
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaText}>{(item as any).Director ?? item.director?.director}</Text>
+                  <Text style={styles.metaDivider}>|</Text>
+                  <Text style={styles.metaText}>{(item as any).Categoria ?? item.categoria?.categoria}</Text>
+                  <Text style={styles.metaDivider}>|</Text>
+                  <Text style={styles.metaText}>{(item as any).Duracion ?? item.duracion} min</Text>
+                </View>
               </View>
+            </Pressable>
+          )}
+          ListHeaderComponent={
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>Cartelera</Text>
+              <View style={styles.headerIndicator} />
+              <Text style={styles.headerSub}>
+                {peliculas.length} películas disponibles
+              </Text>
             </View>
-          </Pressable>
-        )}
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>🎬 Sala de Cines</Text>
-            <Text style={styles.headerSub}>
-              {peliculas.length} películas disponibles
-            </Text>
-          </View>
-        }
-        contentContainerStyle={styles.listContent}
-        style={styles.container}
-      />
-    </GestureHandlerRootView>
+          }
+          contentContainerStyle={styles.listContent}
+        />
+      </GestureHandlerRootView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  container: {
+  root: {
     flex: 1,
     backgroundColor: COLORS.dark,
   },
-  content: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 24,
-  },
   header: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
+    paddingTop: 45,
+    paddingBottom: 20,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '900',
     color: COLORS.text,
-    letterSpacing: -0.5,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+  },
+  headerIndicator: {
+    width: 60,
+    height: 4,
+    backgroundColor: COLORS.primary,
+    marginTop: 8,
+    marginBottom: 8,
+    borderRadius: 2,
   },
   headerSub: {
     fontSize: 14,
     color: COLORS.textSecondary,
-    marginTop: 4,
   },
   listContent: {
-    paddingBottom: 24,
-    gap: 14,
+    paddingBottom: 30,
+    gap: 20,
   },
   card: {
     backgroundColor: COLORS.card,
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
+    marginHorizontal: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  poster: {
+  posterImage: {
     width: '100%',
-    height: 200,
-    backgroundColor: '#2a2a2a',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  posterEmoji: {
-    fontSize: 64,
+    height: 220,
   },
   cardContent: {
-    padding: 14,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.primary,
   },
   titulo: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: 'bold',
     color: COLORS.text,
     marginBottom: 8,
   },
   metaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 8,
     alignItems: 'center',
   },
   metaText: {
     fontSize: 13,
     color: COLORS.textSecondary,
+    fontWeight: '500',
   },
   metaDivider: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginHorizontal: 2,
+    fontSize: 12,
+    color: COLORS.primary,
+    fontWeight: 'bold',
   },
   centered: {
     flex: 1,
@@ -213,13 +220,14 @@ const styles = StyleSheet.create({
   },
   retry: {
     marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     backgroundColor: COLORS.primary,
     borderRadius: 8,
   },
   retryText: {
-    color: '#ffffff',
-    fontWeight: '600',
+    color: COLORS.text,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
   },
 });

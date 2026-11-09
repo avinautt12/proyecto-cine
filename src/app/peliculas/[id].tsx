@@ -1,201 +1,157 @@
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View, ScrollView, Image } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { cineApi } from '@/services/api';
 import { Pelicula } from '@/types/cine';
 
 const COLORS = {
-  primary: '#E50914',
-  dark: '#141414',
-  card: '#1f1f1f',
+  primary: '#D81A21',
+  dark: '#000000',
+  card: '#1A1A1A',
   text: '#ffffff',
-  textSecondary: '#b3b3b3',
-  accent: '#ffd700',
-  border: '#333333',
+  textSecondary: '#A0A0A0',
 };
 
-export default function PeliculaDetalleScreen() {
-  const router = useRouter();
+export default function DetallePelicula() {
   const { id } = useLocalSearchParams();
-  const idStr = typeof id === 'string' ? id : id?.[0];
-
   const [pelicula, setPelicula] = useState<Pelicula | null>(null);
   const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!idStr) {
-      setError('No se recibió el ID de la película');
-      setCargando(false);
-      return;
-    }
     let montado = true;
-    cineApi
-      .getPelicula(idStr)
+    cineApi.getPelicula(Number(id))
       .then((data) => {
         if (montado) {
           setPelicula(data);
           setCargando(false);
         }
       })
-      .catch((err) => {
-        if (montado) {
-          setError(err.message);
-          setCargando(false);
-        }
+      .catch(() => {
+        if (montado) setCargando(false);
       });
-    return () => {
-      montado = false;
-    };
-  }, [idStr]);
+    return () => { montado = false; };
+  }, [id]);
 
   if (cargando) {
     return (
-      <View style={styles.centered}>
+      <SafeAreaView style={styles.centered}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
+      </SafeAreaView>
     );
   }
 
-  if (error) {
+  if (!pelicula) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>Error al cargar</Text>
-        <Text style={styles.errorSub}>{error}</Text>
-        <Pressable style={styles.volver} onPress={() => router.back()}>
-          <Text style={styles.volverTexto}>Volver a la sala</Text>
-        </Pressable>
-      </View>
+      <SafeAreaView style={styles.centered}>
+        <Text style={styles.errorText}>Error al cargar la película</Text>
+      </SafeAreaView>
     );
   }
 
-  if (!pelicula) return null;
+  const titulo = (pelicula as any).Titulo ?? pelicula.titulo;
+  const director = (pelicula as any).Director ?? pelicula.director?.director;
+  const categoria = (pelicula as any).Categoria ?? pelicula.categoria?.categoria;
+  const duracion = (pelicula as any).Duracion ?? pelicula.duracion;
+  const sinopsis = (pelicula as any).Sinopsis ?? pelicula.sinopsis ?? 'Sin sinopsis disponible.';
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Pressable style={styles.volver} onPress={() => router.back()}>
-        <Text style={styles.volverTexto}>← Volver a la sala</Text>
-      </Pressable>
+    <SafeAreaView style={styles.root} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Image
+          source={{ uri: (pelicula as any).Imagen ?? pelicula.imagen ?? 'https://via.placeholder.com/500x750?text=Sin+Poster' }}
+          style={styles.posterImage}
+          resizeMode="cover"
+        />
 
-      <View style={styles.poster}>
-        <Text style={styles.posterEmoji}>🎬</Text>
-      </View>
+        <View style={styles.infoContainer}>
+          <Text style={styles.title}>{titulo}</Text>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaText}>{director}</Text>
+            <Text style={styles.metaDivider}>|</Text>
+            <Text style={styles.metaText}>{categoria}</Text>
+            <Text style={styles.metaDivider}>|</Text>
+            <Text style={styles.metaText}>{duracion} min</Text>
+          </View>
 
-      <Text style={styles.titulo}>{pelicula.titulo}</Text>
-
-      <View style={styles.metaContainer}>
-        <View style={styles.metaChip}>
-          <Text style={styles.metaChipText}>{pelicula.director?.director}</Text>
+          <View style={styles.sinopsisContainer}>
+            <Text style={styles.sinopsisTitle}>SINOPSIS</Text>
+            <Text style={styles.sinopsisBody}>{sinopsis}</Text>
+          </View>
         </View>
-        <View style={styles.metaChip}>
-          <Text style={styles.metaChipText}>{pelicula.categoria?.categoria}</Text>
-        </View>
-        <View style={styles.metaChip}>
-          <Text style={styles.metaChipText}>{pelicula.duracion} min</Text>
-        </View>
-      </View>
-
-      <View style={styles.divider} />
-
-      <Text style={styles.subtitulo}>Sinopsis</Text>
-      <Text style={styles.sinopsis}>
-        {pelicula.sinopsis ?? 'Sin sinopsis disponible.'}
-      </Text>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
     backgroundColor: COLORS.dark,
   },
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 24,
-    gap: 16,
+    paddingBottom: 40,
   },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-  },
-  volver: {
-    marginBottom: 4,
-  },
-  volverTexto: {
-    fontSize: 15,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  errorText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  errorSub: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    paddingHorizontal: 32,
-    marginTop: 8,
-  },
-  poster: {
+  posterImage: {
     width: '100%',
-    height: 320,
-    backgroundColor: '#2a2a2a',
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    height: 300,
   },
-  posterEmoji: {
-    fontSize: 80,
+  infoContainer: {
+    padding: 20,
+    marginTop: -20,
+    backgroundColor: COLORS.dark,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
-  titulo: {
+  title: {
     fontSize: 32,
     fontWeight: '900',
     color: COLORS.text,
-    marginTop: 16,
-    letterSpacing: -0.5,
-  },
-  metaContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
     marginBottom: 12,
   },
-  metaChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: COLORS.card,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginBottom: 30,
+    gap: 8,
   },
-  metaChipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.accent,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 4,
-  },
-  subtitulo: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: COLORS.text,
-  },
-  sinopsis: {
-    fontSize: 16,
+  metaText: {
+    fontSize: 14,
     color: COLORS.textSecondary,
-    lineHeight: 24,
+    fontWeight: '500',
+  },
+  metaDivider: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: 'bold',
+  },
+  sinopsisContainer: {
+    borderTopWidth: 1,
+    borderTopColor: COLORS.card,
+    paddingTop: 24,
+  },
+  sinopsisTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: COLORS.primary,
+    letterSpacing: 1.5,
+    marginBottom: 12,
+  },
+  sinopsisBody: {
+    fontSize: 16,
+    lineHeight: 26,
+    color: COLORS.textSecondary,
+  },
+  centered: {
+    flex: 1,
+    backgroundColor: COLORS.dark,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: COLORS.text,
+    fontSize: 18,
   },
 });
