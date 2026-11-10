@@ -1,98 +1,233 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  Image,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { cineApi } from '@/services/api';
+import { Pelicula } from '@/types/cine';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+const COLORS = {
+  primary: '#D81A21', 
+  dark: '#000000',   
+  card: '#1A1A1A',    
+  text: '#ffffff',
+  textSecondary: '#A0A0A0',
+  border: '#333333',
+};
 
 export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+  const router = useRouter();
+  const [peliculas, setPeliculas] = useState<Pelicula[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+  useEffect(() => {
+    let montado = true;
+    cineApi
+      .getPeliculas()
+      .then((data) => {
+        if (montado) {
+          setPeliculas(data);
+          setCargando(false);
+        }
+      })
+      .catch((err) => {
+        if (montado) {
+          setError(err.message);
+          setCargando(false);
+        }
+      });
+    return () => {
+      montado = false;
+    };
+  }, []);
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
+  if (cargando) {
+    return (
+      <SafeAreaView style={styles.root}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+        </GestureHandlerRootView>
       </SafeAreaView>
-    </ThemedView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.root}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View style={styles.centered}>
+            <Text style={styles.errorText}>No se pudo conectar</Text>
+            <Text style={styles.errorSub}>{error}</Text>
+            <Pressable style={styles.retry} onPress={() => window.location.reload?.()}>
+              <Text style={styles.retryText}>Reintentar</Text>
+            </Pressable>
+          </View>
+        </GestureHandlerRootView>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.root} edges={['top']}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <FlatList
+          data={peliculas}
+          keyExtractor={(item, index) =>
+            (item.identificador ?? (item as any).Identificador ?? index).toString()
+          }
+          renderItem={({ item }) => (
+            <Pressable
+              style={styles.card}
+              onPress={() =>
+                router.push(`/peliculas/${String((item as any).Identificador ?? item.identificador)}` as any)
+              }
+            >
+              <Image
+                source={{ uri: (item as any).Imagen ?? item.imagen ?? 'https://via.placeholder.com/500x750?text=Sin+Poster' }}
+                style={styles.posterImage}
+                resizeMode="cover"
+              />
+              <View style={styles.cardContent}>
+                <Text style={styles.titulo}>{(item as any).Titulo ?? item.titulo}</Text>
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaText}>{(item as any).Director ?? item.director?.director}</Text>
+                  <Text style={styles.metaDivider}>|</Text>
+                  <Text style={styles.metaText}>{(item as any).Categoria ?? item.categoria?.categoria}</Text>
+                  <Text style={styles.metaDivider}>|</Text>
+                  <Text style={styles.metaText}>{(item as any).Duracion ?? item.duracion} min</Text>
+                </View>
+              </View>
+            </Pressable>
+          )}
+          ListHeaderComponent={
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>Cartelera</Text>
+              <View style={styles.headerIndicator} />
+              <Text style={styles.headerSub}>
+                {peliculas.length} películas disponibles
+              </Text>
+            </View>
+          }
+          contentContainerStyle={styles.listContent}
+        />
+      </GestureHandlerRootView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    backgroundColor: COLORS.dark,
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 45,
+    paddingBottom: 20,
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: COLORS.text,
     textTransform: 'uppercase',
+    letterSpacing: 2,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  headerIndicator: {
+    width: 60,
+    height: 4,
+    backgroundColor: COLORS.primary,
+    marginTop: 8,
+    marginBottom: 8,
+    borderRadius: 2,
+  },
+  headerSub: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  listContent: {
+    paddingBottom: 30,
+    gap: 20,
+  },
+  card: {
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginHorizontal: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  posterImage: {
+    width: '100%',
+    height: 220,
+  },
+  cardContent: {
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.primary,
+  },
+  titulo: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: 8,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center',
+  },
+  metaText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  metaDivider: {
+    fontSize: 12,
+    color: COLORS.primary,
+    fontWeight: 'bold',
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  errorText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  errorSub: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: 32,
+    marginTop: 8,
+  },
+  retry: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: COLORS.text,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
   },
 });
