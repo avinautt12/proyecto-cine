@@ -7,13 +7,11 @@ CREATE TABLE IF NOT EXISTS Directores (
     Director VARCHAR(150) NOT NULL
 );
 
--- 2. Tabla Categorias
 CREATE TABLE IF NOT EXISTS Categorias (
     IDCategoria INT AUTO_INCREMENT PRIMARY KEY,
     Categoria VARCHAR(100) NOT NULL
 );
 
--- 3. Tabla Peliculas
 CREATE TABLE IF NOT EXISTS Peliculas (
     IDPelicula INT AUTO_INCREMENT PRIMARY KEY,
     Titulo VARCHAR(200) NOT NULL,
@@ -25,7 +23,6 @@ CREATE TABLE IF NOT EXISTS Peliculas (
     FOREIGN KEY (IDCategoria) REFERENCES Categorias(IDCategoria) ON DELETE SET NULL
 );
 
--- Directores
 INSERT INTO Directores (Director) VALUES
   ('Christopher Nolan'),
   ('Quentin Tarantino'),
@@ -33,7 +30,6 @@ INSERT INTO Directores (Director) VALUES
   ('Sofía Coppola'),
   ('Bong Joon-ho');
 
--- Categorías
 INSERT INTO Categorias (Categoria) VALUES
   ('Acción'),
   ('Ciencia Ficción'),
@@ -42,7 +38,6 @@ INSERT INTO Categorias (Categoria) VALUES
   ('Comedia'),
   ('Animación');
 
--- Películas (Duración en minutos)
 INSERT INTO Peliculas (Titulo, IDDirector, Duracion, IDCategoria, Sinopsis) VALUES
   ('Origen', 1, 148, 2, 'Un ladrón que entra en los sueños de otros para robar secretos.'),
   ('Interestelar', 1, 169, 2, 'Un grupo de exploradores viaja a través de un agujero de gusano.'),
@@ -57,12 +52,10 @@ INSERT INTO Peliculas (Titulo, IDDirector, Duracion, IDCategoria, Sinopsis) VALU
   
 USE cine_db;
 
--- 1. Agregamos la columna Imagen (si no la habías agregado aún)
 ALTER TABLE Peliculas ADD COLUMN Imagen VARCHAR(500);
 
 SET SQL_SAFE_UPDATES = 0;
 
--- 2. Asignamos cada URL a su película correspondiente
 UPDATE Peliculas SET Imagen = 'https://files.soniccdn.com/imagehosting/e3/11256_640.jpg' WHERE Titulo = 'Origen';
 UPDATE Peliculas SET Imagen = 'https://media.bolavip.com/wp-content/uploads/sites/16/2024/04/02131508/Interestelar-esta-en-Netflix-Revisa-que-plataforma-la-tiene-ok-1200x740.webp' WHERE Titulo = 'Interestelar';
 UPDATE Peliculas SET Imagen = 'https://mir-s3-cdn-cf.behance.net/projects/404/ed68b888690055.Y3JvcCw3MDIsNTQ5LDI0NiwxMDE0.jpg' WHERE Titulo = 'Pulp Fiction';
@@ -74,7 +67,6 @@ UPDATE Peliculas SET Imagen = 'https://m.media-amazon.com/images/M/MV5BOTM2NzQ3M
 UPDATE Peliculas SET Imagen = 'https://cdn.cinepremiere.com.mx/uploads/2021/06/interestellar.jpeg' WHERE Titulo = 'Interestelar 2';
 UPDATE Peliculas SET Imagen = 'https://cdn.milenio.com/uploads/media/2026/10/20/coco-streaming-puedes-disfrutar-pelicula.jpg' WHERE Titulo = 'Coco';
 
--- 3. Volvemos a encender el candado por seguridad
 SET SQL_SAFE_UPDATES = 1;
 
 ALTER TABLE Peliculas CHANGE COLUMN IDPelicula Identificador INT AUTO_INCREMENT;
